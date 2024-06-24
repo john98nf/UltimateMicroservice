@@ -1,17 +1,14 @@
 package main
 
 import (
-	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	dataMng "github.com/john98nf/UltimateMicroservice/cmd/app/dataManagement"
 	"github.com/joho/godotenv"
-
-	"github.com/go-sql-driver/mysql"
 )
-
-var db *sql.DB
 
 func setupRouter() *gin.Engine {
 
@@ -32,25 +29,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cfg := mysql.Config{
-		User:   envFile["DBUSER"],
-		Passwd: envFile["DBPASSWORD"],
-		Net:    "tcp",
-		Addr:   envFile["DBENDPOINT"],
-		DBName: envFile["DBSCHEMA"],
-	}
-
-	db, err = sql.Open("mysql", cfg.FormatDSN())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pingErr := db.Ping()
-	if pingErr != nil {
-		log.Println("Couldn't ping the database.")
-		log.Fatal(pingErr)
-	}
-	log.Println("Connected to the Database!")
+	var mdlCtrl *dataMng.MiddlewareController = dataMng.InitiallizeNewMiddlewareController(envFile)
+	fmt.Println(mdlCtrl)
 
 	r := setupRouter()
 	r.Run(":8080")
