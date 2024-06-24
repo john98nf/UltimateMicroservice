@@ -1,28 +1,18 @@
 create table
-  `Companies` (
+  `COMPANIES` (
     `ID` int unsigned not null comment 'Primary Key',
-    `NAME` VARCHAR(255) not null comment 'Name of the company (Primary Key)',
+    `NAME` VARCHAR(15) not null unique comment 'Name of the company (unique)',
     `DESCRIPTION` TEXT null comment 'Description of the company (optional)',
     `EMPLOYEES` INTEGER UNSIGNED not null comment 'Number of Employees',
     `REGISTRATION_STATUS` BOOLEAN not null comment 'A flag indigating if the company is registered or not.',
     `TYPE` ENUM('Corporations','NonProfit','Cooperative','Sole Proprietorship') not null comment 'Type of the company',
-    primary key (`ID`, `NAME`)
+    primary key (`ID`)
   );
-
-alter table
-  `Companies`
-modify column
-  `ID` int unsigned not null auto_increment
 
 create table
   `USERS` (
     `ID` int unsigned not null comment 'Primary Key',
-    `USERNAME` VARCHAR(255) not null comment 'Username (Primary Key)',
+    `USERNAME` VARCHAR(255) unique not null comment 'Username (Unique)',
     `DISPLAY_NAME` TINYTEXT null,
-    primary key (`ID`, `USERNAME`)
+    primary key (`ID`)
   );
-
-alter table
-  `USERS`
-modify column
-  `ID` int unsigned not null auto_increment
