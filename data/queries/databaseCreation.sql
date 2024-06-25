@@ -5,7 +5,7 @@ create table
     `DESCRIPTION` TEXT null comment 'Description of the company (optional)',
     `EMPLOYEES` INTEGER UNSIGNED not null comment 'Number of Employees',
     `REGISTRATION_STATUS` BOOLEAN not null comment 'A flag indigating if the company is registered or not.',
-    `TYPE` ENUM('Corporations','NonProfit','Cooperative','Sole Proprietorship') not null comment 'Type of the company',
+    `LEGAL_TYPE` ENUM('Corporations','NonProfit','Cooperative','Sole Proprietorship') not null comment 'Type of the company',
     primary key (`ID`)
   );
 
