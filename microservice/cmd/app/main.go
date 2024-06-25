@@ -44,13 +44,85 @@ func setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, company)
 	})
 
+	r.PATCH("/company/:id", func(c *gin.Context) {
+		sId, errId := strconv.Atoi(c.Params.ByName("id"))
+		if errId != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Company Id"})
+			return
+		}
+		id := uint(sId)
+
+		// Retrieve current company
+		company, err := mdlCtrl.GetCompany(id)
+		if err != nil {
+			log.Println(err)
+			if errors.Is(err, dataMng.ResourceNotFoundError) {
+				c.JSON(http.StatusNotFound, gin.H{"Status": "Resource Not Found"})
+			} else {
+				c.JSON(http.StatusBadRequest, gin.H{"Status": "Internal Server Error"})
+			}
+			return
+		}
+		noNewValue := true
+		if name := c.PostForm("Name"); name != "" {
+			company.Name = name
+			noNewValue = false
+		}
+		if description := c.PostForm("Description"); description != "" {
+			company.Description = description
+			noNewValue = false
+		}
+		if emp := c.PostForm("Employees"); emp != "" {
+			employees, err := strconv.Atoi(emp)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Employees Value"})
+				return
+			}
+			company.Employees = employees
+			noNewValue = false
+		}
+		if regStatus := c.PostForm("RegistrationStatus"); regStatus != "" {
+			registrationStatus, err := strconv.ParseBool(regStatus)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Registration Status"})
+				return
+			}
+			company.RegistrationStatus = registrationStatus
+			noNewValue = false
+		}
+		if legalType := c.PostForm("LegalType"); legalType != "" {
+			if ok := model.VerifyCompanyType(legalType); !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Company type"})
+				return
+			}
+			company.LegalType = legalType
+			noNewValue = false
+		}
+
+		if noNewValue {
+			c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Company Attributes"})
+			return
+		}
+
+		if err := mdlCtrl.ModifyCompany(company); err != nil {
+			log.Println(err)
+			if errors.Is(err, dataMng.DuplicateResource) {
+				c.JSON(http.StatusConflict, gin.H{"Status": "Company already exists"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Internal Server Error"})
+			}
+			return
+		}
+		c.JSON(http.StatusOK, company)
+	})
+
 	r.POST("/company", func(c *gin.Context) {
 		id, errId := strconv.Atoi(c.PostForm("id"))
-		name := c.PostForm("name")
-		description := c.PostForm("description")
-		employees, errEmployees := strconv.Atoi(c.PostForm("employees"))
-		registrationStatus, _ := strconv.ParseBool(c.PostForm("registrationStatus"))
-		legalType := c.PostForm("legalType")
+		name := c.PostForm("Name")
+		description := c.PostForm("Description")
+		employees, errEmployees := strconv.Atoi(c.PostForm("Employees"))
+		registrationStatus, _ := strconv.ParseBool(c.PostForm("RegistrationStatus"))
+		legalType := c.PostForm("LegalType")
 		if errId != nil || errEmployees != nil || !model.VerifyCompanyType(legalType) {
 			c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Company Attributes"})
 			return
@@ -68,9 +140,9 @@ func setupRouter() *gin.Engine {
 			log.Println(err)
 			if errors.Is(err, dataMng.DuplicateResource) {
 				c.JSON(http.StatusConflict, gin.H{"Status": "Company already exists"})
-				return
+			} else {
+				c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Request"})
 			}
-			c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Request"})
 			return
 		}
 		c.JSON(http.StatusOK, newCompany)

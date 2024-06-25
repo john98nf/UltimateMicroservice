@@ -103,6 +103,26 @@ func (ctrl *MiddlewareController) CreateCompany(cmp *model.Company) error {
 }
 
 func (ctrl *MiddlewareController) ModifyCompany(cmp *model.Company) error {
+	sqlStatement := "UPDATE COMPANIES SET NAME = ?, DESCRIPTION = ?, EMPLOYEES = ?, REGISTRATION_STATUS = ?, LEGAL_TYPE = ? WHERE ID = ?"
+	res, err := ctrl.dbCtrl.db.Exec(sqlStatement,
+		cmp.Name,
+		cmp.Description,
+		cmp.Employees,
+		cmp.RegistrationStatus,
+		cmp.LegalType,
+		cmp.Id)
+	if err != nil {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			return DuplicateResource
+		}
+		return err
+	}
+	if rows, err := res.RowsAffected(); err != nil {
+		return err
+	} else if rows != 1 {
+		return ResourceNotFoundError
+	}
 	return nil
 }
 
