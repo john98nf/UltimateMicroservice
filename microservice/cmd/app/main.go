@@ -37,7 +37,7 @@ func setupRouter() *gin.Engine {
 			if errors.Is(err, dataMng.ResourceNotFoundError) {
 				c.JSON(http.StatusNotFound, gin.H{"Status": "Resource Not Found"})
 			} else {
-				c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Request"})
+				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Internal Server Error"})
 			}
 			return
 		}
@@ -59,7 +59,7 @@ func setupRouter() *gin.Engine {
 			if errors.Is(err, dataMng.ResourceNotFoundError) {
 				c.JSON(http.StatusNotFound, gin.H{"Status": "Resource Not Found"})
 			} else {
-				c.JSON(http.StatusBadRequest, gin.H{"Status": "Internal Server Error"})
+				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Internal Server Error"})
 			}
 			return
 		}
@@ -107,7 +107,7 @@ func setupRouter() *gin.Engine {
 		if err := mdlCtrl.ModifyCompany(company); err != nil {
 			log.Println(err)
 			if errors.Is(err, dataMng.DuplicateResource) {
-				c.JSON(http.StatusConflict, gin.H{"Status": "Company already exists"})
+				c.JSON(http.StatusConflict, gin.H{"Status": "Conflict with another resource"})
 			} else {
 				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Internal Server Error"})
 			}
@@ -141,7 +141,7 @@ func setupRouter() *gin.Engine {
 			if errors.Is(err, dataMng.DuplicateResource) {
 				c.JSON(http.StatusConflict, gin.H{"Status": "Company already exists"})
 			} else {
-				c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Request"})
+				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Internal Server Error"})
 			}
 			return
 		}
@@ -160,7 +160,7 @@ func setupRouter() *gin.Engine {
 			if errors.Is(err, dataMng.ResourceNotFoundError) {
 				c.JSON(http.StatusNotFound, gin.H{"Status": "Resource Not Found"})
 			} else {
-				c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Request"})
+				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Internal Server Error"})
 			}
 			return
 		}
