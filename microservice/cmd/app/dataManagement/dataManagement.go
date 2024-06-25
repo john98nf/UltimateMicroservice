@@ -4,16 +4,26 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/john98nf/UltimateMicroservice/cmd/app/model"
+	"golang.org/x/crypto/bcrypt"
 )
 
-var ResourceNotFoundError error = errors.New("Resource not found!")
-var DuplicateResource error = errors.New("Resource already exists!")
-var NoResourceModification error = errors.New("No modification took place!")
-var UnavailableUUIDGeneration error = errors.New("UUID generation currently unavailable!")
+var ResourceNotFoundError error = errors.New("Resource not found")
+var DuplicateResource error = errors.New("Resource already exists")
+var NoResourceModification error = errors.New("No modification took place")
+var UnavailableUUIDGeneration error = errors.New("UUID generation currently unavailable")
+var UserAuthenticationFailed error = errors.New("User authentication failed")
+var InvalidToken error = errors.New("Invalid Token")
+
+type Claims struct {
+	Username string
+	jwt.StandardClaims
+}
 
 type dbController struct {
 	db  *sql.DB
@@ -22,6 +32,7 @@ type dbController struct {
 
 type MiddlewareController struct {
 	dbCtrl *dbController
+	JWTKey []byte
 }
 
 func newDBController(env map[string]string) *dbController {
@@ -40,6 +51,7 @@ func newDBController(env map[string]string) *dbController {
 func InitiallizeNewMiddlewareController(env map[string]string) *MiddlewareController {
 	var ctrl *MiddlewareController = &MiddlewareController{}
 
+	ctrl.JWTKey = []byte(env["JWT_SECRET_KEY"])
 	ctrl.dbCtrl = newDBController(env)
 
 	if err := ctrl.dbCtrl.establishConnection(); err != nil {
@@ -179,15 +191,84 @@ func (ctrl *MiddlewareController) produceNewRandomUUID() (uuid.UUID, error) {
 			}
 			return uuid.Nil, UnavailableUUIDGeneration
 		}
-		// if err := row.Err(); err != nil {
-		// 	fmt.Println("Error found", err.Error())
-		// 	if err == sql.ErrNoRows {
-		// 		return id, nil
-		// 	}
-		// 	return uuid.Nil, UnavailableUUIDGeneration
-		// }
 	}
 	return uuid.Nil, UnavailableUUIDGeneration
+}
+
+func (ctrl *MiddlewareController) FetchPasswordHash(usr string) ([]byte, error) {
+	var hashedPassword []byte
+	row := ctrl.dbCtrl.db.QueryRow("SELECT PASSWORD_HASH FROM USERS WHERE USERNAME = ?", usr)
+	if err := row.Scan(&hashedPassword); err != nil {
+		return nil, err
+	}
+	return hashedPassword, nil
+}
+
+func (ctrl *MiddlewareController) ValidateToken(tokenStr string) error {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("bad signed method received")
+		}
+		return ctrl.JWTKey, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if !token.Valid {
+		return InvalidToken
+	}
+
+	return nil
+}
+
+func (ctrl *MiddlewareController) GenerateTokenJWT(creds *model.Credentials) (string, error) {
+
+	storedHash, err := ctrl.FetchPasswordHash(creds.Username)
+	if err != nil {
+		log.Println(err)
+		return "", UserAuthenticationFailed
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(creds.Password)); err != nil {
+		return "", UserAuthenticationFailed
+	}
+
+	expirationTime := time.Now().Add(5 * time.Minute)
+	claims := &Claims{
+		Username: creds.Username,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(ctrl.JWTKey)
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
+}
+
+func (ctrl *MiddlewareController) CreateUser(creds model.Credentials) error {
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	sqlStatement := "INSERT INTO USERS (USERNAME, PASSWORD_HASH) VALUES (?, ?)"
+	if _, err := ctrl.dbCtrl.db.Exec(sqlStatement,
+		creds.Username,
+		passwordHash); err != nil {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			return DuplicateResource
+		}
+		return err
+	}
+	return nil
 }
 
 func (ctrl *dbController) establishConnection() error {

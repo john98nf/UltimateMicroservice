@@ -11,8 +11,7 @@ create table
 
 create table
   `USERS` (
-    `ID` binary(16) not null comment 'Primary Key',
-    `USERNAME` VARCHAR(255) unique not null comment 'Username (Unique)',
-    `DISPLAY_NAME` TINYTEXT null,
-    primary key (`ID`)
+    `USERNAME` VARCHAR(255) not null comment 'Primary Key',
+    `PASSWORD_HASH` CHAR(60) not null,
+    primary key (`USERNAME`)
   );

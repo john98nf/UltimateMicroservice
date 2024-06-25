@@ -22,6 +22,11 @@ var legalTypes map[companyType]struct{} = map[companyType]struct{}{
 	SoleProprietorship: struct{}{},
 }
 
+type Credentials struct {
+	Username string
+	Password string
+}
+
 type Company struct {
 	Id                 uuid.UUID
 	Name               string `max:"15"`
