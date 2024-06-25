@@ -1,5 +1,9 @@
 package model
 
+import (
+	"github.com/google/uuid"
+)
+
 type companyType string
 
 const (
@@ -19,7 +23,7 @@ var legalTypes map[companyType]struct{} = map[companyType]struct{}{
 }
 
 type Company struct {
-	Id                 uint
+	Id                 uuid.UUID
 	Name               string `max:"15"`
 	Description        string `max:"3000"`
 	Employees          int
@@ -27,7 +31,7 @@ type Company struct {
 	LegalType          string
 }
 
-func NewCompany(id uint,
+func NewCompany(id uuid.UUID,
 	name string,
 	description string,
 	employees int,
@@ -41,17 +45,6 @@ func NewCompany(id uint,
 		Employees:          employees,
 		RegistrationStatus: registrationStatus,
 		LegalType:          legalType,
-	}
-}
-
-func NullCompany() *Company {
-	return &Company{
-		Id:                 0,
-		Name:               "",
-		Description:        "",
-		Employees:          0,
-		RegistrationStatus: false,
-		LegalType:          "NoValidType",
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	dataMng "github.com/john98nf/UltimateMicroservice/cmd/app/dataManagement"
 	"github.com/john98nf/UltimateMicroservice/cmd/app/model"
 	"github.com/joho/godotenv"
@@ -25,12 +26,11 @@ func setupRouter() *gin.Engine {
 
 	// GET company
 	r.GET("/company/:id", func(c *gin.Context) {
-		sId, errId := strconv.Atoi(c.Params.ByName("id"))
+		id, errId := uuid.Parse(c.Params.ByName("id"))
 		if errId != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Company Id"})
 			return
 		}
-		id := uint(sId)
 		company, err := mdlCtrl.GetCompany(id)
 		if err != nil {
 			log.Println(err)
@@ -45,12 +45,11 @@ func setupRouter() *gin.Engine {
 	})
 
 	r.PATCH("/company/:id", func(c *gin.Context) {
-		sId, errId := strconv.Atoi(c.Params.ByName("id"))
+		id, errId := uuid.Parse(c.Params.ByName("id"))
 		if errId != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Company Id"})
 			return
 		}
-		id := uint(sId)
 
 		// Retrieve current company
 		company, err := mdlCtrl.GetCompany(id)
@@ -108,6 +107,8 @@ func setupRouter() *gin.Engine {
 			log.Println(err)
 			if errors.Is(err, dataMng.DuplicateResource) {
 				c.JSON(http.StatusConflict, gin.H{"Status": "Conflict with another resource"})
+			} else if errors.Is(err, dataMng.NoResourceModification) {
+				c.JSON(http.StatusOK, gin.H{"Status": "Company wasn't modified"})
 			} else {
 				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Internal Server Error"})
 			}
@@ -117,19 +118,19 @@ func setupRouter() *gin.Engine {
 	})
 
 	r.POST("/company", func(c *gin.Context) {
-		id, errId := strconv.Atoi(c.PostForm("id"))
+		id := uuid.Nil // UUID construction is handled by the MiddlewareController
 		name := c.PostForm("Name")
 		description := c.PostForm("Description")
 		employees, errEmployees := strconv.Atoi(c.PostForm("Employees"))
 		registrationStatus, _ := strconv.ParseBool(c.PostForm("RegistrationStatus"))
 		legalType := c.PostForm("LegalType")
-		if errId != nil || errEmployees != nil || !model.VerifyCompanyType(legalType) {
+		if errEmployees != nil || !model.VerifyCompanyType(legalType) {
 			c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Company Attributes"})
 			return
 		}
 
 		newCompany := &model.Company{
-			Id:                 uint(id),
+			Id:                 id,
 			Name:               name,
 			Description:        description,
 			Employees:          employees,
@@ -140,6 +141,8 @@ func setupRouter() *gin.Engine {
 			log.Println(err)
 			if errors.Is(err, dataMng.DuplicateResource) {
 				c.JSON(http.StatusConflict, gin.H{"Status": "Company already exists"})
+			} else if errors.Is(err, dataMng.UnavailableUUIDGeneration) {
+				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Company creation unavailable"})
 			} else {
 				c.JSON(http.StatusInternalServerError, gin.H{"Status": "Internal Server Error"})
 			}
@@ -149,12 +152,11 @@ func setupRouter() *gin.Engine {
 	})
 
 	r.DELETE("/company/:id", func(c *gin.Context) {
-		sId, errId := strconv.Atoi(c.Params.ByName("id"))
+		id, errId := uuid.Parse(c.Params.ByName("id"))
 		if errId != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Status": "Invalid Company Id"})
 			return
 		}
-		id := uint(sId)
 		if err := mdlCtrl.DeleteCompany(id); err != nil {
 			log.Println(err)
 			if errors.Is(err, dataMng.ResourceNotFoundError) {

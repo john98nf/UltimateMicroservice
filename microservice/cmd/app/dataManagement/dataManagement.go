@@ -7,11 +7,14 @@ import (
 	"log"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/john98nf/UltimateMicroservice/cmd/app/model"
 )
 
 var ResourceNotFoundError error = errors.New("Resource not found!")
 var DuplicateResource error = errors.New("Resource already exists!")
+var NoResourceModification error = errors.New("No modification took place!")
+var UnavailableUUIDGeneration error = errors.New("UUID generation currently unavailable!")
 
 type dbController struct {
 	db  *sql.DB
@@ -60,16 +63,16 @@ func (ctrl *MiddlewareController) TestConnection() error {
 	return nil
 }
 
-func (ctrl *MiddlewareController) GetCompany(id uint) (*model.Company, error) {
+func (ctrl *MiddlewareController) GetCompany(id uuid.UUID) (*model.Company, error) {
 
-	var comp *model.Company = model.NullCompany()
-	row := ctrl.dbCtrl.db.QueryRow("SELECT ID, "+
+	var comp *model.Company = &model.Company{}
+	row := ctrl.dbCtrl.db.QueryRow("SELECT BIN_TO_UUID(ID), "+
 		"NAME, "+
 		"IFNULL(DESCRIPTION,''), "+
 		"EMPLOYEES, "+
 		"REGISTRATION_STATUS, "+
 		"LEGAL_TYPE "+
-		"FROM COMPANIES WHERE ID = ?", id)
+		"FROM COMPANIES WHERE ID = UUID_TO_BIN(?)", id.String())
 	if err := row.Scan(&comp.Id,
 		&comp.Name,
 		&comp.Description,
@@ -79,13 +82,20 @@ func (ctrl *MiddlewareController) GetCompany(id uint) (*model.Company, error) {
 		if err == sql.ErrNoRows {
 			return comp, ResourceNotFoundError
 		}
-		return comp, fmt.Errorf("company %d: %v", id, err)
+		return comp, err
 	}
 	return comp, nil
 }
 
 func (ctrl *MiddlewareController) CreateCompany(cmp *model.Company) error {
-	sqlStatement := "INSERT INTO COMPANIES (ID, NAME, DESCRIPTION, EMPLOYEES, REGISTRATION_STATUS, LEGAL_TYPE) VALUES (?, ?, ?, ?, ?, ?)"
+	id, err := ctrl.produceNewRandomUUID()
+	if err != nil {
+		return err
+	}
+	cmp.Id = id
+	fmt.Println(id)
+
+	sqlStatement := "INSERT INTO COMPANIES (ID, NAME, DESCRIPTION, EMPLOYEES, REGISTRATION_STATUS, LEGAL_TYPE) VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?)"
 	if _, err := ctrl.dbCtrl.db.Exec(sqlStatement,
 		cmp.Id,
 		cmp.Name,
@@ -103,7 +113,7 @@ func (ctrl *MiddlewareController) CreateCompany(cmp *model.Company) error {
 }
 
 func (ctrl *MiddlewareController) ModifyCompany(cmp *model.Company) error {
-	sqlStatement := "UPDATE COMPANIES SET NAME = ?, DESCRIPTION = ?, EMPLOYEES = ?, REGISTRATION_STATUS = ?, LEGAL_TYPE = ? WHERE ID = ?"
+	sqlStatement := "UPDATE COMPANIES SET NAME = ?, DESCRIPTION = NULLIF(?, ''), EMPLOYEES = ?, REGISTRATION_STATUS = ?, LEGAL_TYPE = ? WHERE ID = UUID_TO_BIN(?)"
 	res, err := ctrl.dbCtrl.db.Exec(sqlStatement,
 		cmp.Name,
 		cmp.Description,
@@ -121,14 +131,14 @@ func (ctrl *MiddlewareController) ModifyCompany(cmp *model.Company) error {
 	if rows, err := res.RowsAffected(); err != nil {
 		return err
 	} else if rows != 1 {
-		return ResourceNotFoundError
+		return NoResourceModification
 	}
 	return nil
 }
 
-func (ctrl *MiddlewareController) DeleteCompany(cmpID uint) error {
-	sqlStatement := "DELETE FROM COMPANIES WHERE ID = ?"
-	res, err := ctrl.dbCtrl.db.Exec(sqlStatement, cmpID)
+func (ctrl *MiddlewareController) DeleteCompany(id uuid.UUID) error {
+	sqlStatement := "DELETE FROM COMPANIES WHERE ID = UUID_TO_BIN(?)"
+	res, err := ctrl.dbCtrl.db.Exec(sqlStatement, id)
 	if err != nil {
 		return err
 	}
@@ -138,6 +148,28 @@ func (ctrl *MiddlewareController) DeleteCompany(cmpID uint) error {
 		return ResourceNotFoundError
 	}
 	return nil
+}
+
+func (ctrl *MiddlewareController) produceNewRandomUUID() (uuid.UUID, error) {
+	id := uuid.New()
+	var temp struct{}
+	for i := 0; i < 100; i++ {
+		row := ctrl.dbCtrl.db.QueryRow("SELECT ID FROM COMPANIES WHERE ID = ?", id.String())
+		if err := row.Scan(&temp); err != nil {
+			if err == sql.ErrNoRows {
+				return id, nil
+			}
+			return uuid.Nil, UnavailableUUIDGeneration
+		}
+		// if err := row.Err(); err != nil {
+		// 	fmt.Println("Error found", err.Error())
+		// 	if err == sql.ErrNoRows {
+		// 		return id, nil
+		// 	}
+		// 	return uuid.Nil, UnavailableUUIDGeneration
+		// }
+	}
+	return uuid.Nil, UnavailableUUIDGeneration
 }
 
 func (ctrl *dbController) establishConnection() error {

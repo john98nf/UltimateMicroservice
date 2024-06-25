@@ -1,6 +1,6 @@
 create table
   `COMPANIES` (
-    `ID` int unsigned not null comment 'Primary Key',
+    `ID` binary(16) not null comment 'Primary Key',
     `NAME` VARCHAR(15) not null unique comment 'Name of the company (unique)',
     `DESCRIPTION` TEXT null comment 'Description of the company (optional)',
     `EMPLOYEES` INTEGER UNSIGNED not null comment 'Number of Employees',
@@ -11,7 +11,7 @@ create table
 
 create table
   `USERS` (
-    `ID` int unsigned not null comment 'Primary Key',
+    `ID` binary(16) not null comment 'Primary Key',
     `USERNAME` VARCHAR(255) unique not null comment 'Username (Unique)',
     `DISPLAY_NAME` TINYTEXT null,
     primary key (`ID`)
