@@ -255,7 +255,7 @@ func setupRouter() *gin.Engine {
 
 func main() {
 
-	envFile, err := godotenv.Read("../../.env")
+	envFile, err := godotenv.Read(".env")
 	if err != nil {
 		log.Fatal(err)
 	}
