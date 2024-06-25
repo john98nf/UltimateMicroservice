@@ -3,7 +3,6 @@ package dataManagement
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 
 	"github.com/go-sql-driver/mysql"
@@ -93,7 +92,6 @@ func (ctrl *MiddlewareController) CreateCompany(cmp *model.Company) error {
 		return err
 	}
 	cmp.Id = id
-	fmt.Println(id)
 
 	sqlStatement := "INSERT INTO COMPANIES (ID, NAME, DESCRIPTION, EMPLOYEES, REGISTRATION_STATUS, LEGAL_TYPE) VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?)"
 	if _, err := ctrl.dbCtrl.db.Exec(sqlStatement,
@@ -112,28 +110,48 @@ func (ctrl *MiddlewareController) CreateCompany(cmp *model.Company) error {
 	return nil
 }
 
-func (ctrl *MiddlewareController) ModifyCompany(cmp *model.Company) error {
-	sqlStatement := "UPDATE COMPANIES SET NAME = ?, DESCRIPTION = NULLIF(?, ''), EMPLOYEES = ?, REGISTRATION_STATUS = ?, LEGAL_TYPE = ? WHERE ID = UUID_TO_BIN(?)"
-	res, err := ctrl.dbCtrl.db.Exec(sqlStatement,
+func (ctrl *MiddlewareController) ModifyCompany(id uuid.UUID,
+	name *string,
+	description *string,
+	employees *int,
+	registrationStatus *bool,
+	legalType *string) (*model.Company, error) {
+
+	cmp, err := ctrl.GetCompany(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if name != nil {
+		cmp.Name = *name
+	}
+	if description != nil {
+		cmp.Description = *description
+	}
+	if employees != nil {
+		cmp.Employees = *employees
+	}
+	if registrationStatus != nil {
+		cmp.RegistrationStatus = *registrationStatus
+	}
+	if legalType != nil {
+		cmp.LegalType = *legalType
+	}
+	sqlStatement := "UPDATE COMPANIES SET NAME = ?, DESCRIPTION = ?, EMPLOYEES = ?, REGISTRATION_STATUS = ?, LEGAL_TYPE = ? WHERE ID = UUID_TO_BIN(?)"
+	if _, err := ctrl.dbCtrl.db.Exec(sqlStatement,
 		cmp.Name,
 		cmp.Description,
 		cmp.Employees,
 		cmp.RegistrationStatus,
 		cmp.LegalType,
-		cmp.Id)
-	if err != nil {
+		cmp.Id); err != nil {
 		var mysqlErr *mysql.MySQLError
 		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
-			return DuplicateResource
+			return nil, DuplicateResource
 		}
-		return err
+		return nil, err
 	}
-	if rows, err := res.RowsAffected(); err != nil {
-		return err
-	} else if rows != 1 {
-		return NoResourceModification
-	}
-	return nil
+	return cmp, nil
 }
 
 func (ctrl *MiddlewareController) DeleteCompany(id uuid.UUID) error {
