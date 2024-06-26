@@ -40,11 +40,11 @@ func newDBController() *dbController {
 
 	return &dbController{
 		cfg: &mysql.Config{
-			User:   os.Getenv("DBUSER"),
-			Passwd: os.Getenv("DBPASSWORD"),
+			User:   os.Getenv("MYSQL_USER"),
+			Passwd: os.Getenv("MYSQL_PASSWORD"),
 			Net:    "tcp",
 			Addr:   os.Getenv("DBENDPOINT"),
-			DBName: os.Getenv("DBSCHEMA"),
+			DBName: os.Getenv("MYSQL_DATABASE"),
 		},
 	}
 }

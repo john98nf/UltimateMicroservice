@@ -1,3 +1,9 @@
+DROP DATABASE IF EXISTS goSchema;
+
+CREATE DATABASE goSchema;
+
+USE goSchema;
+
 create table
   `COMPANIES` (
     `ID` binary(16) not null comment 'Primary Key',

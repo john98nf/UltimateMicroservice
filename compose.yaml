@@ -1,0 +1,37 @@
+services:
+
+  web:
+    image: ultimate-microservice
+    build:
+      context: ./microservice
+      dockerfile: Dockerfile
+    
+    env_file: "microservice/.env"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.2
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+
+    ports:
+      - "3306:3306"
+    
+    env_file: "microservice/.env"
+    volumes:
+      - ./database/queries/databaseCreation.sql:/docker-entrypoint-initdb.d/databaseCreation.sql
+      - db-data:/var/lib/mysql
+    command: --init-file /docker-entrypoint-initdb.d/databaseCreation.sql --bind-address=0.0.0.0 --skip-networking=0
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p ${MYSQL_PASSWORD}"]
+      timeout: 10s
+      retries: 5
+      interval: 2s
+
+volumes:
+  db-data:
