@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -35,24 +36,24 @@ type MiddlewareController struct {
 	JWTKey []byte
 }
 
-func newDBController(env map[string]string) *dbController {
+func newDBController() *dbController {
 
 	return &dbController{
 		cfg: &mysql.Config{
-			User:   env["DBUSER"],
-			Passwd: env["DBPASSWORD"],
+			User:   os.Getenv("MYSQL_USER"),
+			Passwd: os.Getenv("MYSQL_PASSWORD"),
 			Net:    "tcp",
-			Addr:   env["DBENDPOINT"],
-			DBName: env["DBSCHEMA"],
+			Addr:   os.Getenv("DBENDPOINT"),
+			DBName: os.Getenv("MYSQL_DATABASE"),
 		},
 	}
 }
 
-func InitiallizeNewMiddlewareController(env map[string]string) *MiddlewareController {
+func InitiallizeNewMiddlewareController() *MiddlewareController {
 	var ctrl *MiddlewareController = &MiddlewareController{}
 
-	ctrl.JWTKey = []byte(env["JWT_SECRET_KEY"])
-	ctrl.dbCtrl = newDBController(env)
+	ctrl.JWTKey = []byte(os.Getenv("JWT_SECRET_KEY"))
+	ctrl.dbCtrl = newDBController()
 
 	if err := ctrl.dbCtrl.establishConnection(); err != nil {
 		log.Fatal(err)

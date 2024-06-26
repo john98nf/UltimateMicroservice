@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	dataMng "github.com/john98nf/UltimateMicroservice/cmd/app/dataManagement"
 	"github.com/john98nf/UltimateMicroservice/cmd/app/model"
-	"github.com/joho/godotenv"
 )
 
 var mdlCtrl *dataMng.MiddlewareController
@@ -255,12 +254,7 @@ func setupRouter() *gin.Engine {
 
 func main() {
 
-	envFile, err := godotenv.Read("../../.env")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	mdlCtrl = dataMng.InitiallizeNewMiddlewareController(envFile)
+	mdlCtrl = dataMng.InitiallizeNewMiddlewareController()
 
 	r := setupRouter()
 	r.Run(":8080")
